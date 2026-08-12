@@ -1,0 +1,29 @@
+{
+  "name": "cineai-backend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "cap:init": "npx cap init CineAI com.cineai.app --web-dir public",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@fal-ai/client": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "multer": "latest",
+    "@supabase/supabase-js": "latest",
+    "jsonwebtoken": "latest",
+    "@capacitor/core": "latest",
+    "express-rate-limit": "latest"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "latest",
+    "@capacitor/android": "latest"
+  }
+}
