@@ -1,0 +1,9 @@
+{
+  "name": "CineAI \u2014 AI Video Studio",
+  "short_name": "CineAI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#070a12",
+  "description": "Create cinematic videos from prompts, images and talking photos."
+}

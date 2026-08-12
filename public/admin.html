@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CineAI Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#070a12;color:#f6f7fb;font:14px system-ui,Arial}.wrap{max-width:1400px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.brand{font-size:26px;font-weight:800}.brand span{color:#a855f7}.btn{border:0;border-radius:9px;padding:10px 14px;background:#7c3cff;color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#111827;border:1px solid #29344b}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.stat,.panel{background:#0d1220;border:1px solid #202a40;border-radius:14px;padding:17px}.stat b{font-size:27px;display:block}.muted{color:#96a0b5}.panel{margin-top:16px;overflow:auto}.tabs{display:flex;gap:8px;margin:16px 0}.tabs button{background:#0d1220;color:#cbd5e1;border:1px solid #29344b;padding:9px 13px;border-radius:8px;cursor:pointer}.tabs button.active{background:#5b21b6;color:white}.view{display:none}.view.active{display:block}table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:10px;border-bottom:1px solid #1e293b;text-align:left}th{color:#c4b5fd}.badge{padding:4px 7px;border-radius:999px;background:#172033;font-size:12px}.danger{color:#fca5a5}.ok{color:#86efac}.form{display:flex;gap:8px;flex-wrap:wrap}.form input{background:#080d17;border:1px solid #2a354d;color:white;padding:10px;border-radius:8px}.notice{margin:10px 0;color:#c4b5fd}.login{max-width:420px;margin:15vh auto}.login input{width:100%;margin:6px 0;padding:12px;background:#080d17;color:#fff;border:1px solid #29344b;border-radius:8px}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:550px){.grid{grid-template-columns:1fr}.wrap{padding:12px}}
+</style></head>
+<body>
+<div class="wrap">
+<div class="top"><div class="brand">🎬 Cine<span>AI</span> Admin</div><button class="btn secondary" onclick="signOut()">Sign out</button></div>
+<div id="login" class="login panel">
+<h2>Admin sign in</h2><p class="muted">Use an account listed in ADMIN_EMAILS on the server.</p>
+<input id="email" type="email" placeholder="Admin email"><input id="password" type="password" placeholder="Password">
+<button class="btn" onclick="login()">Sign in</button><div id="loginMsg" class="notice"></div>
+</div>
+<div id="dash" style="display:none">
+<div class="grid">
+<div class="stat">Users<b id="users">0</b></div><div class="stat">Generations<b id="gens">0</b></div><div class="stat">Successful<b id="success">0</b></div><div class="stat">Failed<b id="failed">0</b></div><div class="stat">Revenue<b id="revenue">₦0</b></div>
+</div>
+<div class="tabs">
+<button class="active" onclick="tab('usersView',this)">Users</button><button onclick="tab('genView',this)">Generations</button><button onclick="tab('payView',this)">Payments</button>
+</div>
+<section id="usersView" class="view active panel"><h2>Users</h2><div id="usersTable"></div></section>
+<section id="genView" class="view panel"><h2>Generation activity</h2><div id="genTable"></div></section>
+<section id="payView" class="view panel"><h2>Payments</h2><div id="payTable"></div></section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const API_BASE=window.CINEAI_API_BASE||"";
+const SUPABASE_URL=window.CINEAI_SUPABASE_URL||"https://YOUR_PROJECT.supabase.co";
+const SUPABASE_KEY=window.CINEAI_SUPABASE_PUBLISHABLE_KEY||"YOUR_SUPABASE_PUBLISHABLE_KEY";
+const sb=(!SUPABASE_URL.includes("YOUR_PROJECT"))?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+let data=null;
+async function login(){
+ if(!sb){loginMsg.textContent="Configure Supabase in this page first.";return}
+ loginMsg.textContent="Signing in…";
+ const r=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
+ if(r.error){loginMsg.textContent="❌ "+r.error.message;return}
+ await load();
+}
+async function signOut(){if(sb) await sb.auth.signOut();location.reload()}
+async function headers(){const s=(await sb.auth.getSession()).data.session;if(!s)throw Error("Please sign in.");return {Authorization:"Bearer "+s.access_token}}
+async function load(){
+ try{
+  const r=await fetch(API_BASE+"/api/admin/overview",{headers:await headers()}); const d=await r.json();
+  if(!r.ok) throw Error(d.error||"Admin access denied.");
+  data=d; login.style.display="none"; dash.style.display="block";
+  users.textContent=d.stats.users;gens.textContent=d.stats.generations;success.textContent=d.stats.successful;failed.textContent=d.stats.failed;revenue.textContent="₦"+Number(d.stats.revenueNGN).toLocaleString();
+  render();
+ }catch(e){loginMsg.textContent="❌ "+e.message}
+}
+function tab(id,b){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active")}
+function render(){
+ usersTable.innerHTML="<table><tr><th>Email</th><th>Plan</th><th>Credits</th><th>Joined</th><th>Manage</th></tr>"+data.users.map(u=>`<tr><td>${u.email||"-"}</td><td>${u.plan}</td><td>${u.credits}</td><td>${new Date(u.created_at).toLocaleDateString()}</td><td><div class="form"><input id="c_${u.id}" type="number" placeholder="+/- credits" style="width:120px"><button class="btn" onclick="changeCredits('${u.id}')">Apply</button></div></td></tr>`).join("")+"</table>";
+ genTable.innerHTML="<table><tr><th>Type</th><th>Status</th><th>Cost</th><th>User</th><th>Date</th></tr>"+data.generations.map(g=>`<tr><td>${g.type}</td><td><span class="badge">${g.status}</span></td><td>${g.cost}</td><td>${g.user_id}</td><td>${new Date(g.created_at).toLocaleString()}</td></tr>`).join("")+"</table>";
+ payTable.innerHTML="<table><tr><th>Reference</th><th>Plan</th><th>Amount</th><th>Credits</th><th>Status</th><th>Date</th></tr>"+data.payments.map(p=>`<tr><td>${p.reference}</td><td>${p.plan}</td><td>₦${(p.amount_kobo/100).toLocaleString()}</td><td>${p.credits}</td><td>${p.status}</td><td>${new Date(p.created_at).toLocaleString()}</td></tr>`).join("")+"</table>";
+}
+async function changeCredits(userId){
+ const amount=Number(document.getElementById("c_"+userId).value); if(!Number.isInteger(amount)||amount===0)return alert("Enter a non-zero integer.");
+ const r=await fetch(API_BASE+"/api/admin/credits",{method:"POST",headers:{...(await headers()),"Content-Type":"application/json"},body:JSON.stringify({userId,amount})});
+ const d=await r.json();if(!r.ok)return alert(d.error||"Failed");alert("New balance: "+d.credits);load();
+}
+if(sb) sb.auth.getSession().then(x=>{if(x.data.session)load()});
+</script></body></html>
